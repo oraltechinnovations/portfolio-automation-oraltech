@@ -1,0 +1,461 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "a838da1c-577a-49ae-a762-1c8e122353ec",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -416,
+        -240
+      ],
+      "id": "55971fc3-931f-41aa-a2df-8b01375f7e77",
+      "name": "Webhook",
+      "webhookId": "a838da1c-577a-49ae-a762-1c8e122353ec"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupération des champs envoyés par Tally\nconst fields = $input.all()[0].json.body.data.fields;\n\n// Fonction intelligente améliorée (avec mode \"Match Exact\")\nfunction getFieldVal(labelSearch, exactMatch = false) {\n  \n  const field = fields.find(f => {\n    if (!f.label) return false;\n    \n    const labelNettoye = f.label.trim().toLowerCase();\n    const rechercheNettoye = labelSearch.trim().toLowerCase();\n\n    // Si on veut un match exact (pour Nom vs Prénom), on utilise ===\n    // Sinon on utilise includes (pour les longues questions)\n    if (exactMatch) {\n      return labelNettoye === rechercheNettoye;\n    } else {\n      return labelNettoye.includes(rechercheNettoye);\n    }\n  });\n  \n  if (!field) return \"Non spécifié\";\n\n  // GESTION DES TYPES\n  // CAS 1 : Menu déroulant (DROPDOWN) -> On convertit l'ID en Texte\n  if (field.type === 'DROPDOWN' && field.options && Array.isArray(field.value)) {\n    const selectedId = field.value[0]; \n    const option = field.options.find(o => o.id === selectedId); \n    return option ? option.text : \"Non spécifié\";\n  }\n\n  // CAS 2 : Champ texte standard\n  return field.value;\n}\n\n// --- Récupération des données ---\n\n// Pour le \"Rappel\", on vérifie si la réponse est \"Oui\"\nconst rappelText = getFieldVal(\"rappelé\"); // Ici on garde le \"contient\" car le titre est long\nconst isRappel = rappelText === \"Oui\";\n\nreturn {\n  json: {\n    \"Prénom\": getFieldVal(\"Prénom\", true), // \"true\" force la recherche exacte\n    \"Nom\": getFieldVal(\"Nom\", true),       // \"true\" force la recherche exacte (évite de prendre Prénom)\n    \"Email\": getFieldVal(\"Email\"),\n    \"Téléphone\": getFieldVal(\"Téléphone\"),\n    \"TypeProbleme\": getFieldVal(\"Sélectionner une option\"), \n    \"Description\": getFieldVal(\"Description du problème\"),\n    \"Rappel\": isRappel,\n    \"Consentement\": true \n  }\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -240
+      ],
+      "id": "0743c82c-c5a7-40f8-ae17-eae7316e7ee3",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "Confirmation de votre demande - OralTech Innovations",
+        "message": "=Bonjour {{ $json.Prénom }},\n\nNous vous remercions d'avoir contacté OralTech Innovations!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        -240
+      ],
+      "id": "f249d168-1e7d-4b48-9a07-3904ac52a4b8",
+      "name": "Send a message",
+      "webhookId": "5a5eb2bf-a771-4188-a7d3-afd9d2807f59",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "tJogijfyaT20uOd5",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8a8d8afc-3b69-4cba-8473-425800dabd3f",
+              "leftValue": "={{ $json.message.content.urgence }}",
+              "rightValue": "haute",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -112,
+        -16
+      ],
+      "id": "ec2f532b-0aca-42c4-97f5-9f0a357b35bc",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Récupérer les données du patient (depuis le tout premier nœud)\nconst patientData = $('Code in JavaScript').first().json;\n\n// 2. Récupérer les données actuelles (venant de l'IA ou du IF)\nconst currentData = $input.first().json;\n\n// 3. Fusionner les données pour ne rien perdre\n// On crée un nouvel objet qui contient tout\nconst finalData = { ...patientData, ...currentData };\n\n// 4. Ajouter l'analyse IA proprement\nif (currentData.message && currentData.message.content) {\n   finalData['Analyse IA'] = currentData.message.content.resume;\n} else {\n   finalData['Analyse IA'] = \"Analyse non disponible\";\n}\n\n// 5. Définir le statut Urgent\nfinalData['Statut'] = 'URGENT - À APPELER';\nfinalData['DateRelancePrévue'] = 'N/A';\n\n// 6. Renvoyer au format n8n\nreturn { json: finalData };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        -96
+      ],
+      "id": "8747db31-556a-41b8-88c0-3567b8eed489",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Récupérer les données du patient\nconst patientData = $('Code in JavaScript').first().json;\n\n// 2. Récupérer les données actuelles\nconst currentData = $input.first().json;\n\n// 3. Fusionner les données\nconst finalData = { ...patientData, ...currentData };\n\n// 4. Ajouter l'analyse IA\nif (currentData.message && currentData.message.content) {\n   finalData['Analyse IA'] = currentData.message.content.resume;\n} else {\n   finalData['Analyse IA'] = \"Analyse non disponible\";\n}\n\n// 5. Calcul de la date (+7 jours)\nfunction addDays(date, days) {\n    var result = new Date(date);\n    result.setDate(result.getDate() + days);\n    return result;\n}\n\nvar today = new Date();\nvar nextWeek = addDays(today, 7);\nvar formattedDate = nextWeek.toISOString().split('T')[0];\n\n// 6. Définir le statut et la date\nfinalData['Statut'] = 'FROID - Relance Prévue';\nfinalData['DateRelancePrévue'] = formattedDate;\n\n// 7. Renvoyer au format n8n\nreturn { json: finalData };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        80
+      ],
+      "id": "d5206826-8d7f-4fcb-83d2-ab20f79d48b3",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Q65M3-floB-6GyMZZrZQ0kKWgIMtBJriWGcXB7mgzk8",
+          "mode": "list",
+          "cachedResultName": "Leads – Québec Démo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Q65M3-floB-6GyMZZrZQ0kKWgIMtBJriWGcXB7mgzk8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Feuille 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Q65M3-floB-6GyMZZrZQ0kKWgIMtBJriWGcXB7mgzk8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Prénom",
+              "displayName": "Prénom",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Nom",
+              "displayName": "Nom",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Téléphone",
+              "displayName": "Téléphone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "TypeProbleme",
+              "displayName": "TypeProbleme",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Analyse IA",
+              "displayName": "Analyse IA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Statut",
+              "displayName": "Statut",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DateRelancePrévue",
+              "displayName": "DateRelancePrévue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Consentement",
+              "displayName": "Consentement",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rappel",
+              "displayName": "Rappel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "index",
+              "displayName": "index",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "logprobs",
+              "displayName": "logprobs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "finish_reason",
+              "displayName": "finish_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        80
+      ],
+      "id": "99ed21d1-d4a1-4db8-87a0-17695c151bf9",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rloquI4Jw1ZuASjL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "listId": "6901032ec87756c7ea9d3667",
+        "name": "={{ $json.Statut }} : {{ $json.Prénom }} {{ $json.Nom }}",
+        "description": "=PATIENT : {{ $json.Prénom }} {{ $json.Nom }}\nTÉLÉPHONE : {{ $json.Téléphone }}\nTYPE : {{ $json.TypeProbleme }}\n------------------------------\nANALYSE IA :\n{{ $json[\"Analyse IA\"] }}\n------------------------------\nMESSAGE ORIGINAL :\n\"{{ $json.Description }}\"",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -96
+      ],
+      "id": "f5cbf123-af13-4051-8c0a-afb1351fef7d",
+      "name": "Create a card",
+      "credentials": {
+        "trelloApi": {
+          "id": "Rv6zjNRQymXsBC4c",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Tu es un assistant dentaire expert. Ta mission est de trier les demandes.\nRègles :\n1. Si douleur, infection, cassure -> urgence: \"haute\"\n2. Si contrôle, esthétique, info -> urgence: \"basse\"\n\nRéponds UNIQUEMENT au format JSON strict :\n{\n  \"urgence\": \"haute\" ou \"basse\",\n  \"resume\": \"Résumé court\",\n  \"analyse\": \"Justification courte\"\n}",
+              "role": "system"
+            },
+            {
+              "content": "=Analyse cette demande :\nPatient : {{ $json.Prénom }} {{ $json.Nom }}\nType : {{ $json.TypeProbleme }}\nDescription : {{ $json.Description }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -400,
+        -16
+      ],
+      "id": "56dd2d3e-3fed-455c-8519-e3fc27cdf026",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ZphazWsyqmOaaTB4",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create a card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet1": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a9561f60-4da0-4771-ab98-55cbef2704fb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6bdad6c0dca9340b7b360a31bc38dcfec26767d60b4229ba015fc3be9046b62d"
+  },
+  "id": "lynrpncMm8Vd4aLk",
+  "tags": []
+}
