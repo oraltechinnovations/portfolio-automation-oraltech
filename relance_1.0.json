@@ -1,0 +1,299 @@
+{
+  "name": "relance_1.0",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        -288
+      ],
+      "id": "2504e5c8-7619-4d58-928f-c8ec11bf45b9",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1HYa_xnsLw28GzruDP7S0jm9oBi4DiMIo6aRjT9jFCZo",
+          "mode": "list",
+          "cachedResultName": "Portfolio_Dentiste",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYa_xnsLw28GzruDP7S0jm9oBi4DiMIo6aRjT9jFCZo/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Feuille 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYa_xnsLw28GzruDP7S0jm9oBi4DiMIo6aRjT9jFCZo/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        384,
+        -288
+      ],
+      "id": "d053f17f-79d0-465d-9dbd-6f79ead1e3d3",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rloquI4Jw1ZuASjL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2d8d9eb5-edf8-40dc-8241-2f65be74cfbb",
+              "name": "jours_ecoules",
+              "value": "={{ Math.floor($now.diff(DateTime.fromFormat($json.Date_Visite, 'yyyy-MM-dd'), 'days').days) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        544,
+        -288
+      ],
+      "id": "8ed7c6e2-98ca-4b6d-ba10-cda620eb0a1e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.jours_ecoules.toNumber() }}",
+                    "rightValue": 1,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    },
+                    "id": "ae58b7d9-a287-4f42-972b-9ae1e7684f2f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "2e4042fd-44d1-48f1-8398-d6ea522194a3",
+                    "leftValue": "={{ $json.jours_ecoules.toNumber() }}",
+                    "rightValue": 180,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        240,
+        -80
+      ],
+      "id": "061a4682-af43-4c71-ab37-a9aa64156624",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Get row(s) in sheet').item.json.Email }}",
+        "subject": "Merci de votre visite chez Oraltech Innovations ! 🦷",
+        "emailType": "text",
+        "message": "=Bonjour {{ $('Get row(s) in sheet').item.json.Nom }},\n\nMerci d'être passé à la clinique hier pour votre {{ $('Get row(s) in sheet').item.json.Traitement }}.\n\nAvez-vous une minute pour nous laisser un avis sur notre page ? [Lien vers RateMDs/Google]  À bientôt !",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        656,
+        -96
+      ],
+      "id": "4143a6fe-f1ee-432f-b2ca-7e62e28a0868",
+      "name": "Send a message",
+      "webhookId": "a4fa7844-69b2-46a4-a7e7-fcd29c3c64a0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "tJogijfyaT20uOd5",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Tu es la secrétaire de Oraltech Innovations. Rédige un courriel de rappel courtois pour {{ $('Get row(s) in sheet').item.json.Nom }}. Mentionne que sa dernière visite pour {{ $('Get row(s) in sheet').item.json.Traitement }} date d'il y a 6 mois. Suggère un contrôle de routine. Signe L'équipe du Dr William.\nLe ton doit être professionnel mais proche. IMPORTANT : \n- NE METS PAS D'OBJET. Écris UNIQUEMENT le corps du message. Ne commence pas par 'Objet :'.\n- Formate le texte en HTML. Utilise des balises <br><br> pour faire des sauts de ligne clairs entre chaque paragraphe. N'utilise pas de Markdown, juste des balises HTML simples pour l'aération. Si tu rietiens necessaire utilise aussie des style de texte Gras etc.. mais reste PRO\""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        400,
+        32
+      ],
+      "id": "7ac7fe92-abf7-498b-a9a3-b067bac448aa",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ZphazWsyqmOaaTB4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Get row(s) in sheet').item.json.Email }}",
+        "subject": "Suivi de votre dossier dentaire - Dr William",
+        "message": "={{ $json.message.content }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        672,
+        32
+      ],
+      "id": "f119f97e-9ee0-4395-9398-3a6cad59d76b",
+      "name": "Send a message1",
+      "webhookId": "9d637f75-a8ec-4511-be48-6cfe83725707",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "tJogijfyaT20uOd5",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "afb5571d-379e-4185-be9c-1fd94e1d07e3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6bdad6c0dca9340b7b360a31bc38dcfec26767d60b4229ba015fc3be9046b62d"
+  },
+  "id": "8poSSENpjPXLWrJW",
+  "tags": []
+}
