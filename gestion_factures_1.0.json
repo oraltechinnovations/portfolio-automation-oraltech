@@ -1,0 +1,315 @@
+{
+  "name": "gestion_factures_1.0",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "q": "has:attachment"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        -192
+      ],
+      "id": "b1857df9-c7ff-4036-beeb-8e061b4d049a",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "tJogijfyaT20uOd5",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        16
+      ],
+      "id": "2851a8f5-9fd5-42d8-b890-a28f3960fdea",
+      "name": "Get a message",
+      "webhookId": "a54cb920-4b6c-43ca-992d-765f0014d500",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "tJogijfyaT20uOd5",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "text": "Analyse cette facture. Extrais les données en JSON strict (sans markdown). Clés : Fournisseur, Date (YYYY-MM-DD), Montant_Total (nombre), Devise, Categorie, ID_Facture.",
+        "inputType": "base64",
+        "binaryPropertyName": "=attachment_0",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        368,
+        -192
+      ],
+      "id": "8bc42a5f-3919-4702-9f64-f3a7c7a2a5ef",
+      "name": "Analyze image",
+      "credentials": {
+        "openAiApi": {
+          "id": "ZphazWsyqmOaaTB4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. On accède au champ 'content' qui contient la chaîne JSON brute\n// (L'output de l'IA est le premier élément du tableau 'items')\nconst rawJsonString = items[0].json.content; \n\n// 2. On nettoie les balises Markdown qui pourraient être présentes (même si l'IA a obéi)\nconst cleanContent = rawJsonString.replace(/```json/g, '').replace(/```/g, '').trim();\n\n// 3. On convertit la chaîne de caractères propre en un objet JavaScript\nconst parsedInvoice = JSON.parse(cleanContent);\n\n// 4. On retourne l'objet dans le format attendu par n8n (tableau d'objets)\nreturn [{ json: parsedInvoice }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        16
+      ],
+      "id": "10d5fcd4-ef13-4d98-904b-d22527d9df75",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1tYozDgiGMZFqBsQW12xqf9Jf_Q49rUTQ55bX3Oc9Gf0",
+          "mode": "list",
+          "cachedResultName": "Facture_BD",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tYozDgiGMZFqBsQW12xqf9Jf_Q49rUTQ55bX3Oc9Gf0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Feuille 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tYozDgiGMZFqBsQW12xqf9Jf_Q49rUTQ55bX3Oc9Gf0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID_Gmail": "={{ $('Gmail Trigger').item.json.id }}",
+            "ID_Facture": "={{ $json.ID_Facture }}",
+            "Categorie": "={{ $json.Categorie }}",
+            "Devise": "={{ $json.Devise }}",
+            "Montant_Total": "={{ $json.Montant_Total }}",
+            "Date": "={{ $json.Date }}",
+            "Fournisseur": "={{ $json.Fournisseur }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID_Facture",
+              "displayName": "ID_Facture",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fournisseur",
+              "displayName": "Fournisseur",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Montant_Total",
+              "displayName": "Montant_Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Devise",
+              "displayName": "Devise",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Categorie",
+              "displayName": "Categorie",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ID_Gmail",
+              "displayName": "ID_Gmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        592,
+        -192
+      ],
+      "id": "63ed4d9a-1ca2-4003-913f-638b1aa0feff",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rloquI4Jw1ZuASjL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09UJ273EDD",
+          "mode": "list",
+          "cachedResultName": "tous-factures"
+        },
+        "text": "=🔔 Nouvelle facture traitée par l'IA 🤖\n\nFournisseur : {{ $json.Fournisseur }}\nCatégorie : {{ $json.Categorie }}\nDate de facture : {{ $json.Date }}\nMontant : {{ $json.Montant_Total }} {{ $json.Devise }}\nID Facture : {{ $json.ID_Facture }}\n\n✅ Données enregistrées dans Google Sheet.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        704,
+        16
+      ],
+      "id": "e75b9de9-5518-48f9-9cc4-ba74374fa752",
+      "name": "Send a message",
+      "webhookId": "3e5260a7-5f59-41d9-8418-ae06db6c7c85",
+      "credentials": {
+        "slackApi": {
+          "id": "H72tB8a7E0nt3gwF",
+          "name": "Slack account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "01ba9105-89f7-420e-ac6b-9603e0b3b73f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6bdad6c0dca9340b7b360a31bc38dcfec26767d60b4229ba015fc3be9046b62d"
+  },
+  "id": "i9x297i0KEj13iu1",
+  "tags": []
+}
